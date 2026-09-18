@@ -1,0 +1,13 @@
+# OPTIONAL. Apply only together with 06-optional-pv-role.yaml.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-troubleshooter-pv-reader
+subjects:
+  - kind: ServiceAccount
+    name: k8s-troubleshooter
+    namespace: k8s-agent-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-troubleshooter-pv-reader

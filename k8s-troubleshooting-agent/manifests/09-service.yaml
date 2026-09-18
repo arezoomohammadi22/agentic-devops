@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-troubleshooting-agent
+  namespace: k8s-agent-system
+spec:
+  selector:
+    app: k8s-troubleshooting-agent
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

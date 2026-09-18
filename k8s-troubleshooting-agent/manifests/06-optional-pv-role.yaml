@@ -1,0 +1,10 @@
+# OPTIONAL. Do not apply this file unless you also set ENABLE_PV_LOOKUP=true.
+# PVs are cluster-scoped, so this weakens strict namespace isolation.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-troubleshooter-pv-reader
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get"]
