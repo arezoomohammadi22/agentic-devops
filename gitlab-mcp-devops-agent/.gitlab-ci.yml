@@ -1,0 +1,212 @@
+stages:
+  - test
+  - build
+  - deploy
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - when: never
+
+default:
+  tags:
+    - agent-lab
+
+variables:
+  IMAGE_REPOSITORY: "agent-demo"
+
+test:
+  stage: test
+  script:
+    - |
+      set -euo pipefail
+
+      TEST_PORT="$((18000 + CI_JOB_ID % 1000))"
+
+      PORT="$TEST_PORT" \
+      python3 app/server.py \
+        > "/tmp/agent-demo-${CI_JOB_ID}.log" \
+        2>&1 &
+
+      APP_PID="$!"
+
+      cleanup() {
+        kill "$APP_PID" 2>/dev/null || true
+      }
+
+      trap cleanup EXIT
+
+      for attempt in $(seq 1 20); do
+        if curl -fsS \
+          "http://127.0.0.1:${TEST_PORT}/health" \
+          >/dev/null; then
+          break
+        fi
+        sleep 1
+      done
+
+      curl -fsS \
+        "http://127.0.0.1:${TEST_PORT}/" \
+        | grep -qx "agent-demo"
+
+      curl -fsS \
+        "http://127.0.0.1:${TEST_PORT}/health" \
+        | grep -qx "ok"
+
+      if curl -fsS \
+        "http://127.0.0.1:${TEST_PORT}/healthz"; then
+        echo "Unexpected: /healthz returned success"
+        exit 1
+      fi
+
+build:
+  stage: build
+  script:
+    - |
+      set -euo pipefail
+
+      IMAGE="${IMAGE_REPOSITORY}:${CI_COMMIT_SHORT_SHA}"
+
+      docker build \
+        -t "$IMAGE" \
+        .
+
+      docker image inspect \
+        "$IMAGE" \
+        >/dev/null
+
+deploy:
+  stage: deploy
+  script:
+    - |
+      set -euo pipefail
+
+      IMAGE="${IMAGE_REPOSITORY}:${CI_COMMIT_SHORT_SHA}"
+
+      kubectl config use-context \
+        kind-agent-demo
+
+      kind get clusters \
+        | grep -qx "agent-demo"
+
+      kind load docker-image \
+        "$IMAGE" \
+        --name agent-demo
+
+      kubectl apply \
+        -f k8s/namespace.yaml
+
+      sed \
+        "s|IMAGE_PLACEHOLDER|${IMAGE}|g" \
+        k8s/deployment.yaml \
+        | kubectl apply -f -
+
+      kubectl apply \
+        -f k8s/service.yaml
+
+      kubectl rollout status \
+        deployment/web \
+        -n agent-demo \
+        --timeout=60s
+
+      kubectl get pods \
+        -n agent-demo \
+        -o wide
+
+      PORT_FORWARD_PORT="$((20000 + CI_JOB_ID % 1000))"
+
+      kubectl port-forward \
+        -n agent-demo \
+        service/web \
+        "${PORT_FORWARD_PORT}:80" \
+        > "/tmp/agent-demo-port-forward-${CI_JOB_ID}.log" \
+        2>&1 &
+
+      PF_PID="$!"
+
+      cleanup_port_forward() {
+        kill "$PF_PID" 2>/dev/null || true
+      }
+
+      trap cleanup_port_forward EXIT
+
+      for attempt in $(seq 1 20); do
+        if curl -fsS \
+          "http://127.0.0.1:${PORT_FORWARD_PORT}/health" \
+          >/dev/null; then
+          break
+        fi
+        sleep 1
+      done
+
+      curl -fsS \
+        "http://127.0.0.1:${PORT_FORWARD_PORT}/health" \
+        | grep -qx "ok"
+
+  after_script:
+    - |
+      echo "===== Kubernetes diagnostics ====="
+
+      kubectl config use-context \
+        kind-agent-demo \
+        || true
+
+      echo
+      echo "===== Deployment ====="
+
+      kubectl get deployment web \
+        -n agent-demo \
+        -o wide \
+        || true
+
+      echo
+      echo "===== Pods ====="
+
+      kubectl get pods \
+        -n agent-demo \
+        -l app=web \
+        -o wide \
+        || true
+
+      echo
+      echo "===== Pod describe ====="
+
+      kubectl describe pods \
+        -n agent-demo \
+        -l app=web \
+        || true
+
+      echo
+      echo "===== Application logs ====="
+
+      kubectl logs \
+        -n agent-demo \
+        -l app=web \
+        --tail=100 \
+        --prefix=true \
+        || true
+
+      echo
+      echo "===== Service ====="
+
+      kubectl get service web \
+        -n agent-demo \
+        -o wide \
+        || true
+
+      echo
+      echo "===== Endpoints ====="
+
+      kubectl get endpoints web \
+        -n agent-demo \
+        -o wide \
+        || true
+
+      echo
+      echo "===== Events ====="
+
+      kubectl get events \
+        -n agent-demo \
+        --sort-by=.lastTimestamp \
+        || true
