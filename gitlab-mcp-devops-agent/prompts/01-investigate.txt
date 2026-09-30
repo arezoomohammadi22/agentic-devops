@@ -1,0 +1,16 @@
+Use only the GitLab MCP tools.
+
+Investigate the latest failed pipeline on the main branch of
+devops/agent-demo.
+
+Determine the root cause by inspecting the pipeline, failed job log,
+and relevant repository files.
+
+Do not create, update, retry, cancel, commit, or modify anything.
+
+Report:
+- failed stage and job
+- runtime symptom
+- repository file responsible
+- exact configuration mismatch
+- smallest recommended fix

@@ -1,0 +1,11 @@
+Use GitLab MCP only.
+
+Inspect the Merge Request you created.
+
+Report:
+- Merge Request IID
+- current pipeline status
+- status of test, build, and deploy
+- whether the original readiness issue is still present
+
+Do not merge or approve anything.

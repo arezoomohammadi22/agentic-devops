@@ -1,0 +1,8 @@
+Use GitLab MCP only.
+
+Inspect the latest pipeline on main for devops/agent-demo.
+
+Verify that the remediation has reached main and report the final
+pipeline status.
+
+Do not modify anything.

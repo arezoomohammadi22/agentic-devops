@@ -1,0 +1,11 @@
+Using GitLab MCP only, implement the minimal fix you identified.
+
+Requirements:
+- do not modify main directly
+- create a new branch from main
+- change only what is necessary
+- commit the fix
+- create a Merge Request targeting main
+- explain what changed
+- do not merge the Merge Request
+- do not approve the Merge Request
