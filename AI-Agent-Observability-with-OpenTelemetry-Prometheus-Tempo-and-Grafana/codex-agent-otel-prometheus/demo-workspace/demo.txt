@@ -1,9 +1,0 @@
-This is a harmless demo workspace for Codex Agent observability.
-
-Expected demo behavior:
-1. Codex uses its shell/file tools to inspect this directory.
-2. The monitoring wrapper reads `codex exec --json`.
-3. OpenTelemetry metrics are exported to the local OTel Collector.
-4. Prometheus scrapes those metrics from the Collector.
-
-Do not put secrets in this demo directory.
