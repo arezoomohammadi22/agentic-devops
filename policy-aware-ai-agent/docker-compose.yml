@@ -1,0 +1,24 @@
+services:
+  opa:
+    image: ${OPA_IMAGE:-openpolicyagent/opa:latest}
+    command: ["run","--server","--addr=0.0.0.0:8181","--config-file=/config/config.yaml","/policy"]
+    volumes:
+      - ./opa/policy:/policy:ro
+      - ./opa/config.yaml:/config/config.yaml:ro
+    ports: ["8181:8181"]
+
+  gateway:
+    build: {context: ./gateway}
+    environment:
+      OPA_URL: http://opa:8181
+      CONFIG_PATH: /config/config.yaml
+      DB_PATH: /data/lab.db
+      EXECUTOR_MODE: ${EXECUTOR_MODE:-mock}
+    volumes:
+      - ./gateway/config.yaml:/config/config.yaml:ro
+      - gateway-data:/data
+    ports: ["8080:8080"]
+    depends_on: [opa]
+
+volumes:
+  gateway-data:

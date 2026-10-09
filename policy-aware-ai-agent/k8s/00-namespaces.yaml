@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: agent-system}
+---
+apiVersion: v1
+kind: Namespace
+metadata: {name: agent-lab-staging}
+---
+apiVersion: v1
+kind: Namespace
+metadata: {name: agent-lab-production}

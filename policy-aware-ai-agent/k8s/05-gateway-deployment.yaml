@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-agent-gateway
+  namespace: agent-system
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: secure-agent-gateway}}
+  template:
+    metadata: {labels: {app: secure-agent-gateway}}
+    spec:
+      serviceAccountName: incident-agent
+      containers:
+        - name: gateway
+          image: secure-agent-gateway:lab
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: OPA_URL, value: "http://127.0.0.1:8181"}
+            - {name: CONFIG_PATH, value: "/config/config.yaml"}
+            - {name: DB_PATH, value: "/data/lab.db"}
+            - {name: EXECUTOR_MODE, value: "kubernetes"}
+          ports: [{containerPort: 8080}]
+          volumeMounts:
+            - {name: gateway-config, mountPath: /config, readOnly: true}
+            - {name: state, mountPath: /data}
+        - name: opa
+          image: openpolicyagent/opa:latest
+          args: ["run","--server","--addr=0.0.0.0:8181","--config-file=/config/config.yaml","/policy/agent_authz.rego"]
+          ports: [{containerPort: 8181}]
+          volumeMounts:
+            - {name: opa-policy, mountPath: /policy, readOnly: true}
+            - {name: opa-config, mountPath: /config, readOnly: true}
+      volumes:
+        - name: gateway-config
+          configMap: {name: agent-gateway-config}
+        - name: opa-policy
+          configMap:
+            name: agent-opa
+            items: [{key: agent_authz.rego, path: agent_authz.rego}]
+        - name: opa-config
+          configMap:
+            name: agent-opa
+            items: [{key: config.yaml, path: config.yaml}]
+        - name: state
+          emptyDir: {}

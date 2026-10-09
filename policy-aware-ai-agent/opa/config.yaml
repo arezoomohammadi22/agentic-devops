@@ -1,0 +1,5 @@
+decision_logs:
+  console: true
+labels:
+  app: secure-agent-output-validation-lab
+  component: opa

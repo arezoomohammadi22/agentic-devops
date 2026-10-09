@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-api
+  namespace: agent-lab-staging
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: demo-api}}
+  template:
+    metadata: {labels: {app: demo-api}}
+    spec:
+      containers:
+        - name: web
+          image: nginx:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-api
+  namespace: agent-lab-production
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: demo-api}}
+  template:
+    metadata: {labels: {app: demo-api}}
+    spec:
+      containers:
+        - name: web
+          image: nginx:alpine

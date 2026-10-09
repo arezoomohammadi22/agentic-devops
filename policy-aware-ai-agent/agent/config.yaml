@@ -1,0 +1,8 @@
+name: incident-response-agent
+codex:
+  executable: codex
+  model: null
+  reasoning_effort: medium
+  sandbox: read-only
+  ignore_rules: true
+  ephemeral: true

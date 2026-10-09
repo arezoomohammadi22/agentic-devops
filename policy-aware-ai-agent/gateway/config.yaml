@@ -1,0 +1,16 @@
+identity:
+  agent_id: incident-agent
+  roles: [incident-responder]
+  capabilities: [get_logs, restart_deployment]
+namespaces:
+  staging: agent-lab-staging
+  production: agent-lab-production
+rate_limits:
+  restart_deployment:
+    max_calls: 3
+    window_seconds: 600
+approval:
+  ttl_seconds: 120
+executor:
+  mode: mock
+  log_tail_lines: 50

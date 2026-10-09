@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-opa
+  namespace: agent-system
+data:
+  agent_authz.rego: |
+    package agent.authz
+    import rego.v1
+
+    default decision := {"effect":"deny","reason":"default deny"}
+
+    has_role(role) if { input.identity.roles[_] == role }
+    has_capability(capability) if { input.identity.capabilities[_] == capability }
+
+    rate_exceeded if {
+      input.action.tool == "restart_deployment"
+      input.context.calls_last_window >= input.context.max_calls
+    }
+
+    decision := {"effect":"deny","reason":"namespace deletion is forbidden"} if {
+      input.action.tool == "delete_namespace"
+    }
+
+    decision := {"effect":"deny","reason":"agent identity lacks the requested capability"} if {
+      input.action.tool != "delete_namespace"
+      not has_capability(input.action.tool)
+    }
+
+    decision := {"effect":"deny","reason":"restart rate limit exceeded"} if {
+      has_capability("restart_deployment")
+      rate_exceeded
+    }
+
+    decision := {"effect":"allow","reason":"read-only log access allowed"} if {
+      has_role("incident-responder")
+      has_capability("get_logs")
+      input.action.tool == "get_logs"
+    }
+
+    decision := {"effect":"allow","reason":"incident agent may restart staging deployments"} if {
+      has_role("incident-responder")
+      has_capability("restart_deployment")
+      input.action.tool == "restart_deployment"
+      input.action.namespace == "agent-lab-staging"
+      not rate_exceeded
+    }
+
+    decision := {"effect":"require_approval","reason":"production restart requires human approval"} if {
+      has_role("incident-responder")
+      has_capability("restart_deployment")
+      input.action.tool == "restart_deployment"
+      input.action.namespace == "agent-lab-production"
+      not rate_exceeded
+      not input.approval.valid
+    }
+
+    decision := {"effect":"deny","reason":"approval does not match the current action"} if {
+      input.action.tool == "restart_deployment"
+      input.action.namespace == "agent-lab-production"
+      input.approval.valid
+      input.approval.action_hash != input.context.action_hash
+    }
+
+    decision := {"effect":"allow","reason":"approved production restart"} if {
+      has_role("incident-responder")
+      has_capability("restart_deployment")
+      input.action.tool == "restart_deployment"
+      input.action.namespace == "agent-lab-production"
+      not rate_exceeded
+      input.approval.valid
+      input.approval.action_hash == input.context.action_hash
+    }
+  config.yaml: |
+    decision_logs:
+      console: true
+    labels:
+      app: secure-agent-output-validation-lab
+      component: opa
